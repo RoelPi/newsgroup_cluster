@@ -46,15 +46,15 @@ def preprocess_words(doc):
 # documents are longer.
 cv_transform = CountVectorizer(analyzer=preprocess_words, 
                                stop_words = 'english',
-                               ngram_range = (1,3),
+                               ngram_range = 1,
                                min_df=5)
 dfo = cv_transform.fit_transform(newsgroups_train.data)
 
 # In the CountVectorizer there is now a dictionary.
 # dfv.vocabulary_.get('and')
 
-# It is of course better to get densities, so that it accounts for the fact
-# haven't got the same length. So we device occurences by total doc word count.
+# It is of course better to get densities, so that it accounts for the fact that docs
+# haven't got the same length. So we divide occurences by total doc word count.
 tf_transform = TfidfTransformer(use_idf=False).fit(dfo)
 dff = tf_transform.transform(dfo)
 
