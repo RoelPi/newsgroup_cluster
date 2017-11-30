@@ -54,7 +54,7 @@ dfo = cv_transform.fit_transform(newsgroups_train.data)
 # In the CountVectorizer there is now a dictionary.
 # dfv.vocabulary_.get('and')
 
-# For NMF it is of course better to get densities, so that it accounts for the fact that docs
+# For NMF we need to get densities, so that it accounts for the fact that docs
 # haven't got the same length. So we divide occurences by total doc word count.
 tf_transform = TfidfTransformer(use_idf=False).fit(dfo)
 dff = tf_transform.transform(dfo)
@@ -122,7 +122,7 @@ class lda_model_sweep:
 
 # This is a function to run an LDA algorithm on a bow with alpha and eta.
 # It returns an lda_model_sweep object.
-def do_lda(dfo,topic_prior,word_prior):
+def do_lda(dfo_train,dfo_test,topic_prior,word_prior):
     ldaModel = LatentDirichletAllocation(n_components=20, 
                                 max_iter=5,
                                 doc_topic_prior = topic_prior,
@@ -135,20 +135,24 @@ def do_lda(dfo,topic_prior,word_prior):
                   'Class':classes[newsgroups_train.target],
                   'LDA':dfClustLDA})
     dfPredEvalLDA = skm.normalized_mutual_info_score(dfPredLDA.Class,dfPredLDA.LDA)
+    
     sweep_lda = lda_model_sweep(ldaModel,dfPredLDA,dfPredEvalLDA,
                          topic_prior,word_prior)
     return sweep_lda
 
 # This is a function to sweep over the hyperparameters alpha and eta of an LDA.
 # It returns a list of lda_model_sweep objects.
-def do_hp_sweep_lda(dfo,topic_prior_list,word_prior_list):
+def do_hp_sweep_lda(dfo_train,dfo_test,topic_prior_list,word_prior_list):
     hp_sweep_list = [do_lda(dfo,topic_prior,word_prior) 
                     for topic_prior in topic_prior_list
                     for word_prior in word_prior_list]
     return hp_sweep_list
 
-lda_sweeps = do_hp_sweep_lda(dfo,[0.0,0.25,0.5,0.75,1.0],[0.0,0.25,0.5,0.75,1.0])
-lda_overview = [[[i.get_word_prior()],[i.get_topic_prior()],[i.get_NMI()]] for i in lda_sweeps]
+lda_sweeps = do_hp_sweep_lda(dfo,[0.0,0.25,],[0.75,1.0])
+lda_overview = [[[i.get_model()],[i.get_word_prior()],[i.get_topic_prior()],[i.get_NMI()]] for i in lda_sweeps]
+winning_model = lda_overview[
+        [i[3] for i in lda_overview].index(max([i[3] for i in lda_overview])) # Get index of winning model
+        ][0]
 
 ###########################################################
 # Non-Negative Matrix Factorization (Unsupervised) ########
@@ -156,7 +160,7 @@ lda_overview = [[[i.get_word_prior()],[i.get_topic_prior()],[i.get_NMI()]] for i
 
 nmfModel = NMF(n_components=20, 
           random_state=1,
-          alpha=.1, 
+          alpha=.1,
           l1_ratio=.5)
 
 dfClustNMF = find_cluster(nmfModel.fit_transform(dffi))
